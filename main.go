@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"io"
 	"log"
@@ -11,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 
@@ -23,6 +21,7 @@ var (
 	localHost        = "configs/host"
 	localExclusion   = "configs/exclusion"
 	localLog         = "unbound-manager.log"
+	foundDomains     []string
 	exclusionDomains []string
 	err              error
 	wg               sync.WaitGroup
@@ -36,11 +35,11 @@ func init() {
 		flag.Parse()
 		validation = *tempValidation
 	} else {
-		validation = false
+		validation = true
 	}
 	// It is impossible for an flag to be both true and false at the same time.
 	if validation && !validation {
-		log.Fatal("Warning: Validation and no validation cannot be done at the same time.")
+		log.Fatal("Error: Validation and no validation cannot be done at the same time.")
 	}
 	// Remove the localhost file from your system.
 	if fileExists(localHost) {
@@ -61,92 +60,51 @@ func main() {
 func startScraping() {
 	// Replace the URLs in this section to create your own list or add new lists.
 	urls := []string{
-		// Advertisement
-		"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
-		"https://raw.githubusercontent.com/DRSDavidSoft/additional-hosts/master/domains/blacklist/adservers-and-trackers.txt",
-		"https://raw.githubusercontent.com/Ewpratten/youtube_ad_blocklist/master/blocklist.txt",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/UncheckyAds/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.2o7Net/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Risk/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/GoodbyeAds-Samsung-Adblock-Extension/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/GoodbyeAds-Spotify-AdBlock-Extension/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/GoodbyeAds-YouTube-Adblock-Extension/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/UncheckyAds/hosts",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/GoodbyeAds-Xiaomi-Extension/hosts",
-		"https://raw.githubusercontent.com/HorusTeknoloji/TR-PhishingList/master/url-lists.txt",
-		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/AmazonFireTV.txt",
-		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SessionReplay.txt",
-		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt",
-		"https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
-		"https://raw.githubusercontent.com/RooneyMcNibNug/pihole-stuff/master/SNAFU.txt",
-		"https://raw.githubusercontent.com/Spam404/lists/master/main-blacklist.txt",
 		"https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
-		"https://raw.githubusercontent.com/Ultimate-Hosts-Blacklist/cameleon_at_sysctl.org/master/domains.list",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/ads-and-tracking-extended.txt",
+		"https://raw.githubusercontent.com/notracking/hosts-blocklists/master/unbound/unbound.blacklist.conf",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/tracking-aggressive-extended.txt",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/facebook-extended.txt",
+		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/hate-and-junk-extended.txt",
+		"https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt",
+		"https://raw.githubusercontent.com/AdguardTeam/AdguardFilters/master/EnglishFilter/sections/adservers.txt",
+		"https://raw.githubusercontent.com/tg12/pihole-phishtank-list/master/list/phish_domains.txt",
+		"https://raw.githubusercontent.com/HorusTeknoloji/TR-PhishingList/master/url-lists.txt",
+		"https://raw.githubusercontent.com/Spam404/lists/master/main-blacklist.txt",
+		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Risk/hosts",
+		"https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt",
+		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts",
+		"https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt",
 		"https://raw.githubusercontent.com/VeleSila/yhosts/master/hosts",
+		"https://raw.githubusercontent.com/RooneyMcNibNug/pihole-stuff/master/SNAFU.txt",
 		"https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt",
-		"https://raw.githubusercontent.com/anudeepND/youtubeadsblacklist/master/domainlist.txt",
+		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/UncheckyAds/hosts",
 		"https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts",
-		"https://raw.githubusercontent.com/cbuijs/shallalist/master/adv/domains",
-		"https://raw.githubusercontent.com/cbuijs/shallalist/master/tracker/domains",
-		"https://raw.githubusercontent.com/d3ward/toolz/master/src/d3host.txt",
 		"https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts",
-		"https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds-Ultra.txt",
 		"https://raw.githubusercontent.com/justdomains/blocklists/master/lists/adguarddns-justdomains.txt",
 		"https://raw.githubusercontent.com/justdomains/blocklists/master/lists/easylist-justdomains.txt",
-		"https://raw.githubusercontent.com/justdomains/blocklists/master/lists/easyprivacy-justdomains.txt",
-		"https://raw.githubusercontent.com/kboghdady/youTube_ads_4_pi-hole/master/youtubelist.txt",
-		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/ads-and-tracking-extended.txt",
-		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/tracking-aggressive-extended.txt",
-		"https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt",
-		"https://raw.githubusercontent.com/notracking/hosts-blocklists/master/unbound/unbound.blacklist.conf",
-		"https://raw.githubusercontent.com/ookangzheng/dbl-oisd-nl/master/dbl.txt",
-		"https://raw.githubusercontent.com/tiuxo/hosts/master/ads",
-		"https://raw.githubusercontent.com/yous/YousList/master/hosts.txt",
-		"https://hblock.molinero.dev/hosts_domains.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/tracking.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/ads.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/piracy.txt",
-		"https://raw.githubusercontent.com/259095/someonewhocares/main/list",
-		"https://raw.githubusercontent.com/badmojr/1Hosts/master/Xtra/domains.txt",
-		"https://block.energized.pro/extensions/xtreme/formats/domains.txt",
-		// Malicious
-		"https://raw.githubusercontent.com/DandelionSprout/adfilt/master/Alternate%20versions%20Anti-Malware%20List/AntiMalwareHosts.txt",
-		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/CoinBlockerList/hosts",
-		"https://raw.githubusercontent.com/piwik/referrer-spam-blacklist/master/spammers.txt",
 		"https://raw.githubusercontent.com/justdomains/blocklists/master/lists/nocoin-justdomains.txt",
-		"https://raw.githubusercontent.com/BlackJack8/iOSAdblockList/master/Regular%20Hosts.txt",
-		"https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling/hosts",
-		"https://raw.githubusercontent.com/StevenBlack/hosts/master/extensions/fakenews/hosts",
+		"https://raw.githubusercontent.com/justdomains/blocklists/master/lists/easyprivacy-justdomains.txt",
+		"https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.2o7Net/hosts",
 		"https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt",
+		"https://raw.githubusercontent.com/Kees1958/W3C_annual_most_used_survey_blocklist/master/TOP_EU_US_Ads_Trackers_ABP",
 		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/android-tracking.txt",
-		"https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/hate-and-junk-extended.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/crypto.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/drugs.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/malware.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/gambling.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/ransomware.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/smart-tv.txt",
-		"https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts",
-		"https://raw.githubusercontent.com/complexorganizations/unbound-manager/main/configs/include",
-		"https://badmojr.github.io/1Hosts/Pro/domains.txt",
-		// Social Engineering
-		"https://raw.githubusercontent.com/MetaMask/eth-phishing-detect/master/src/hosts.txt",
-		"https://raw.githubusercontent.com/tg12/pihole-phishtank-list/master/list/phish_domains.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/abuse.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/fraud.txt",
-		"https://raw.githubusercontent.com/blocklistproject/Lists/master/scam.txt",
+		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt",
+		"https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/AmazonFireTV.txt",
+		"https://raw.githubusercontent.com/DandelionSprout/adfilt/master/Alternate%20versions%20Anti-Malware%20List/AntiMalwareHosts.txt",
+		"https://raw.githubusercontent.com/anudeepND/blacklist/master/facebook.txt",
+		"https://raw.githubusercontent.com/hl2guide/Filterlist-for-AdGuard-or-PiHole/master/Blocklist/filter_blocklist1.txt",
+		"https://raw.githubusercontent.com/hl2guide/Filterlist-for-AdGuard-or-PiHole/master/Blocklist/filter_blocklist2.txt",
+		"https://raw.githubusercontent.com/BlackJack8/iOSAdblockList/master/Regular%20Hosts.txt",
+		"https://raw.githubusercontent.com/hl2guide/Filterlist-for-AdGuard-or-PiHole/master/Blocklist/filter_blocklist3.txt",
+		"https://raw.githubusercontent.com/hl2guide/Filterlist-for-AdGuard-or-PiHole/master/Blocklist/filter_blocklist4.txt",
 	}
-	// Let's start by making everything one-of-a-kind so we don't scrape the same thing twice.
-	removeDuplicateUrl := makeUnique(urls)
-	// Let's get this mess out of the way.
-	urls = nil
-	for i := 0; i < len(removeDuplicateUrl); i++ {
+	for i := 0; i < len(urls); i++ {
 		// Validate the URI before beginning the scraping process.
-		if validURL(removeDuplicateUrl[i]) {
-			saveTheDomains(removeDuplicateUrl[i])
+		if validURL(urls[i]) {
+			saveTheDomains(urls[i])
 			// To save memory, remove the string from the array.
-			removeDuplicateUrl = removeStringFromSlice(removeDuplicateUrl, removeDuplicateUrl[i])
+			urls = removeStringFromSlice(urls, urls[i])
 		}
 	}
 	// We'll make everything distinctive once everything is finished.
@@ -163,58 +121,43 @@ func saveTheDomains(url string) {
 	if response.StatusCode == 404 {
 		log.Println("Sorry, but we were unable to scrape the page you requested due to a 404 error.", url)
 	}
-	// Scraped data is read and appended to an array.
-	var returnContent []string
-	scanner := bufio.NewScanner(bytes.NewReader(body))
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		returnContent = append(returnContent, scanner.Text())
+	// To find all the domains on a page, use regex.
+	regex := regexp.MustCompile(`(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]`)
+	foundDomains = regex.FindAllString(string(body), -1)
+	defer response.Body.Close()
+	// Make each domain one-of-a-kind.
+	uniqueDomains := makeUnique(foundDomains)
+	// Remove all the exclusions domains from the list.
+	for a := 0; a < len(exclusionDomains); a++ {
+		uniqueDomains = removeStringFromSlice(uniqueDomains, exclusionDomains[a])
 	}
-	for a := 0; a < len(returnContent); a++ {
-		// If the string begins with a "!", inform the user that it is most likely a browser-level ad block list rather than a domain-level ad block list.
-		if strings.HasPrefix(string([]byte(returnContent[a])), "!") {
-			log.Println("Error: Most likely, this is a browser-level block list rather than a DNS-level block list.", url)
+	// Remove the memory from the unused array.
+	foundDomains = nil
+	// Validate the entire list of domains.
+	for i := 0; i < len(uniqueDomains); i++ {
+		// icann.org confirms it's a public suffix domain
+		eTLD, icann := publicsuffix.PublicSuffix(uniqueDomains[i])
+		if icann || strings.IndexByte(eTLD, '.') >= 0 {
+			wg.Add(1)
+			// Go ahead and verify it in the background.
+			go makeDomainsUnique(uniqueDomains[i])
+			// Remove the string from the array to save memory.
+			uniqueDomains = removeStringFromSlice(uniqueDomains, uniqueDomains[i])
+		} else {
+			log.Println("Invalid Domain:", uniqueDomains[i])
 		}
-		// Check to see if the string includes a # prefix, and if it does, skip it.
-		if !strings.HasPrefix(string([]byte(returnContent[a])), "#") {
-			// Make sure the domain is at least 3 characters long
-			if len(string([]byte(returnContent[a]))) > 3 {
-				// To find the domains on a page use regex.
-				foundDomains := regexp.MustCompile(`(?:[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]`).Find([]byte(returnContent[a]))
-				if len(string([]byte(foundDomains))) > 3 {
-					// Validate the entire list of domains.
-					if len(string([]byte(foundDomains))) < 255 && checkIPAddress(string([]byte(foundDomains))) && !strings.Contains(string([]byte(foundDomains)), " ") && strings.Contains(string([]byte(foundDomains)), ".") && !strings.Contains(string([]byte(foundDomains)), "#") && !strings.Contains(string([]byte(foundDomains)), "*") && !strings.Contains(string([]byte(foundDomains)), "!") {
-						// icann.org confirms it's a public suffix domain
-						eTLD, icann := publicsuffix.PublicSuffix(string([]byte(foundDomains)))
-						// Start the other tests if the domain has a valid suffix.
-						if icann || strings.IndexByte(eTLD, '.') >= 0 {
-							wg.Add(1)
-							// Go ahead and verify it in the background.
-							go makeDomainsUnique(string([]byte(foundDomains)))
-						} else {
-							log.Println("Invalid domain suffix:", string([]byte(foundDomains)), url)
-						}
-					} else {
-						log.Println("Invalid domain syntax:", string([]byte(foundDomains)), url)
-					}
-				}
-			}
-		}
-		// When you're finished, close the body.
-		defer response.Body.Close()
-		// While the validation is being performed, we wait.
-		wg.Wait()
 	}
+	// While the validation is being performed, we wait.
+	wg.Wait()
 }
 
 func makeDomainsUnique(uniqueDomains string) {
 	if validation {
 		// Validate each and every found domain.
-		if validateDomainViaLookupNS(uniqueDomains) || validateDomainViaLookupAddr(uniqueDomains) || validateDomainViaLookupCNAME(uniqueDomains) || validateDomainViaLookupMX(uniqueDomains) || validateDomainViaLookupTXT(uniqueDomains) || validateDomainViaLookupHost(uniqueDomains) || domainRegistration(uniqueDomains) {
+		if validateDomainViaLookupNS(uniqueDomains) || validateDomainViaLookupAddr(uniqueDomains) || validateDomainViaLookupCNAME(uniqueDomains) || validateDomainViaLookupMX(uniqueDomains) || validateDomainViaLookupTXT(uniqueDomains) || domainRegistration(uniqueDomains) {
 			// Maintain a list of all authorized domains.
 			writeToFile(localHost, uniqueDomains)
 		} else {
-			// Let the users know if there are any issues while verifying the domain.
 			log.Println("Error validating domain:", uniqueDomains)
 		}
 	} else {
@@ -268,22 +211,11 @@ func validateDomainViaLookupTXT(domain string) bool {
 	return len(valid) >= 1
 }
 
-// Using host, see if the domain is legitimate.
-func validateDomainViaLookupHost(domain string) bool {
-	valid, _ := net.LookupHost(domain)
-	return len(valid) >= 1
-}
-
 // Validate the domain by checking the domain registration.
 func domainRegistration(domain string) bool {
 	client := &rdap.Client{}
 	_, ok := client.QueryDomain(domain)
 	return ok == nil
-}
-
-// Make sure it's not an IP address.
-func checkIPAddress(ip string) bool {
-	return net.ParseIP(ip) == nil
 }
 
 // Verify the URI.
@@ -324,7 +256,7 @@ func removeStringFromSlice(originalSlice []string, removeString string) []string
 	return originalSlice
 }
 
-// Save the information to a file.
+// Save to a file
 func writeToFile(pathInSystem string, content string) {
 	filePath, err := os.OpenFile(pathInSystem, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	handleErrors(err)
@@ -350,20 +282,12 @@ func readAndAppend(fileLocation string, arrayName []string) []string {
 func makeEverythingUnique() {
 	var finalDomainList []string
 	finalDomainList = readAndAppend(localHost, finalDomainList)
-	// Make each domain one-of-a-kind.
 	uniqueDomains := makeUnique(finalDomainList)
-	// It is recommended that the array be deleted from memory.
-	finalDomainList = nil
-	// Sort the entire string.
-	sort.Strings(uniqueDomains)
-	// Remove all the exclusions domains from the list.
-	for a := 0; a < len(exclusionDomains); a++ {
-		uniqueDomains = removeStringFromSlice(uniqueDomains, exclusionDomains[a])
-	}
 	// Delete the original file and rewrite it.
 	err = os.Remove(localHost)
 	handleErrors(err)
-	// Begin composing the document
+	// the array should be removed from memory
+	finalDomainList = nil
 	for i := 0; i < len(uniqueDomains); i++ {
 		writeToFile(localHost, uniqueDomains[i])
 	}
