@@ -5,7 +5,7 @@
 ### Installation
 Lets first use `curl` and save the file in `/usr/local/bin/`
 ```
-curl https://raw.githubusercontent.com/saugjunkie/unbound-manager/bestforme/unbound-manager.sh --create-dirs -o /usr/local/bin/unbound-manager.sh
+curl https://raw.githubusercontent.com/Saugjunkie/unbound-manager/bestforme/unbound-manager.sh --create-dirs -o /usr/local/bin/unbound-manager.sh
 ```
 ```
 chmod +x /usr/local/bin/unbound-manager.sh
@@ -25,13 +25,13 @@ bash /usr/local/bin/unbound-manager.sh
 ### Variants
 | Variants               |
 | ---------------------  |
-| [Host](https://raw.githubusercontent.com/saugjunkie/unbound-manager/bestforme/configs/host) |
+| [Host](https://raw.githubusercontent.com/Saugjunkie/unbound-manager/bestforme/configs/host) |
 
 ---
 ### Creating and updating a list
 Let's begin by cloning the repository.
 ```
-git clone --depth 1 https://github.com/saugjunkie/unbound-manager
+git clone --depth 1 https://github.com/Saugjunkie/unbound-manager
 ```
 Open `main.go` if you wish to alter the domain sources. After that update the urls array.
 ```
@@ -53,7 +53,7 @@ Why are you only banning it on the DNS level rather than the system level?
 - It's a good idea to prohibit something on a system level rather than a DNS level, however some devices can't prohibit it on a system level (for example, smart devices), therefore a dns level is preferred.
 
 Is it possible for me to utilize your list without utilizing Unbound Manager?
-- `https://raw.githubusercontent.com/saugjunkie/unbound-manager/bestforme/configs/host`
+- `https://raw.githubusercontent.com/Saugjunkie/unbound-manager/bestforme/configs/host`
 
 How can I get credit if I own one of the lists you're using?
 - Please make a pull request.
