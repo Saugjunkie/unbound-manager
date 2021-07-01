@@ -1,5 +1,5 @@
 #!/bin/bash
-# https://github.com/complexorganizations/unbound-manager
+# https://github.com/saugjunkie/unbound-manager
 
 # Require script to be run as root
 function super-user-check() {
@@ -58,10 +58,10 @@ UNBOUND_CONFIG="${UNBOUND_ROOT}/unbound.conf"
 UNBOUND_ROOT_HINTS="${UNBOUND_ROOT}/root.hints"
 UNBOUND_ANCHOR="/var/lib/unbound/root.key"
 UNBOUND_ROOT_SERVER_CONFIG_URL="https://www.internic.net/domain/named.cache"
-UNBOUND_CONFIG_HOST_URL="https://raw.githubusercontent.com/complexorganizations/unbound-manager/main/configs/host"
+UNBOUND_CONFIG_HOST_URL="https://raw.githubusercontent.com/saugjunkie/unbound-manager/bestforme/configs/host"
 UNBOUND_CONFIG_HOST="/etc/unbound/unbound.conf.d/host.conf"
 UNBOUND_CONFIG_HOST_TMP="/tmp/host"
-UNBOUND_MANAGER_UPDATE_URL="https://raw.githubusercontent.com/complexorganizations/unbound-manager/main/unbound-manager.sh"
+UNBOUND_MANAGER_UPDATE_URL="https://raw.githubusercontent.com/saugjunkie/unbound-manager/bestforme/unbound-manager.sh"
 
 function usage-help() {
   echo "usage: ./$(basename "$0") <command>"
